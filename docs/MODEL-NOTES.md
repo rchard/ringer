@@ -207,6 +207,24 @@ checks and raw logs support — no vibes, no worker self-reports.
   shallow engagement with the actual code, 212k tokens burned. Don't re-run
   this audition on long structured code review; if it gets another slot,
   try a shorter, more mechanical task first.
+- 2026-07-11 — AUDITION PASSED (exploration slot, $0 — free). Task: research
+  (home-inventory-research, ai-capture-pipeline lane): web recon with a
+  cited-evidence report contract. Passed the executed check on attempt 1,
+  59k tokens, ~123s — and its key find (Duelion/homebox-companion repo) was
+  orchestrator-verified real, quotes matched the actual README. Contrast
+  with the 07-06 code-review failure: this model looks viable for short
+  structured research/recon tasks, still unproven on long code review.
+  Promotion status: probation on research (1/1 first-try).
+- 2026-07-13 — AUDITION FAILED (exploration slot, $0 — free). Task: research
+  (homebox-photo-locations, vision-approach lane): survey with the
+  research-with-proof cited-evidence contract. Failed the same executed
+  check on both attempts: missing_access_dates — Evidence items never
+  carried 'Accessed: YYYY-MM-DD' even after the retry prompt quoted the
+  exact failure. Content was otherwise plausible (78k tokens, ~191s).
+  Pattern vs 07-11 pass: handles short recon, drops fine-grained format
+  obligations inside a long contract. Demoted on research (1/2 tasks
+  first-try 0.5); if re-auditioned, use a spec with fewer simultaneous
+  format requirements or a check that fails earlier and louder on dates.
 
 ## llama-3.3-70b-instruct (via opencode, `openrouter/meta-llama/llama-3.3-70b-instruct:free`)
 
@@ -217,6 +235,30 @@ checks and raw logs support — no vibes, no worker self-reports.
   ladder now says: audition free models on SHORT mechanical tasks first;
   long-diff review is a proven-tier lane.
 
+## qwen3-235b-a22b-2507 (via opencode, `openrouter/qwen/qwen3-235b-a22b-2507`)
+
+- 2026-07-14 — LAZY PASS on spec-review (homebox-photo-locations): produced
+  an 80-word "NO FINDINGS" report on a draft spec in which codex found 13
+  structured findings (incl. a real P0) and deepseek found 8. The executed
+  check passed it because NO FINDINGS is a legal verdict — the check can't
+  measure diligence. Attempt 1 also failed/retried. Don't use for
+  adversarial/review work where "nothing found" is a cheap exit; needs
+  checks with a minimum-engagement floor (e.g. required per-section
+  coverage notes) if auditioned again.
+
+## deepseek-chat-v3.1 (via opencode, `openrouter/deepseek/deepseek-chat-v3.1`)
+
+- 2026-07-14 — FAIL verdict on spec-review (homebox-photo-locations) was a
+  CHECK false-negative: it wrote 8 real structured findings but as
+  '**Finding:**' (markdown bold), which the adversarial-review kit regex
+  rejected on both attempts; retry feedback quoted the failure but it kept
+  the bold style. Kit check has since been patched to tolerate bold labels.
+  Substance was mixed: several findings overlapped codex usefully, but ONE
+  fabricated evidence ("proof demonstrates sibling names can be identical
+  under different parents" — the executed proof never tested that).
+  Verify its evidence claims before trusting; format-instruction adherence
+  is weak.
+
 ## Small / flash-class models
 
 - First to choke on long conversational or multi-turn harness tasks —
@@ -224,6 +266,24 @@ checks and raw logs support — no vibes, no worker self-reports.
   group lesson).
 
 ## Process lessons (cross-model)
+
+- 2026-07-14 — m2 UI round (codex x2): BOTH tasks' recorded FAILs were an
+  orchestrator CHECK bug — the substance-greps file used '|' as its field
+  delimiter while the grep patterns themselves contained '|' alternation,
+  so every pattern with a paren split mid-regex ('grep: Unmatched (').
+  Both workers' svelte-checks were green on attempt 1 and their patches
+  passed untouched once the delimiter moved to TAB. Lesson: never use a
+  delimiter that can appear inside the delimited data; test the check
+  against a fake artifact BEFORE the run (a 30s dry-run would have
+  caught it).
+- 2026-07-14 — m1b-api-wiring (codex) failed 2/2 attempts on a live-integration
+  401 that was the ORCHESTRATOR'S fault: the spec said the Homebox login token
+  could be passed "verbatim" to HomeboxClient, but the client prepends
+  "Bearer " itself → "Bearer Bearer". One-line fix in the surviving worktree
+  re-passed the executed check (9 API + 2 live tests). Lesson: when a spec
+  documents an API quirk, state the ONE correct usage — never offer
+  alternatives ("X handles it, or do Y") in a worker brief. Codex's actual
+  code was otherwise correct on attempt 1.
 
 - 2026-07-06 — the orchestrator's CHECKS were the day's top failure source:
   three check bugs (fixture newline join, first-occurrence ordering vs the
@@ -289,12 +349,15 @@ checks and raw logs support — no vibes, no worker self-reports.
 - 2026-07-15 ringer-self-update run (3 serial tasks, direct-repo-edit mode): code-fix baseline-test repair 1/1 first-try (61k tokens, 1.6m); code-feature self-update mechanism (git fetch/ff-pull/re-exec + HUD staleness restart + 20-test suite) 1/1 first-try at high effort (153k, 8.1m); code-feature signal-contract (all 3 scoreboard surfaces + canonical-route lint enforcement) passed on retry (358k, 13.7m) — attempt 1 died on stale old-column assertions in pre-existing tests it hadn't finished updating; the retry prompt's injected FAIL list was enough to close it out. Lesson: when a task rewrites a display contract, name every test file asserting the old contract in the spec's ownership list AND tell it to update them FIRST.
 - 2026-07-09 code-feature/code-fix (ringside-overhaul): 4/4 first-try — a ringer.py logging change with tests, a 265-line stdlib backfill CLI (atomic rewrite, dry-run, idempotence all check-verified), a ~1500-line single-file HTML redesign (running-now pills + worker-card grid + multi-expansion refactor, 30KB patch, node --check + contract greps + unittest), and a render-gating change where it correctly UPDATED tests asserting the old behavior instead of gaming the check. Medium/high reasoning, 65–120k tokens/task.
 - Same day, different session (bench-harness-patches, code-fix): 0.29 first-try over 7 tasks on a Next.js/Turbopack harness. Spec and check quality dominate model choice — see the scoreboard before generalizing either number.
+- 2026-07-11 research (home-inventory-research): 2 lanes. homebox-status 1/1 first-try (77k tok); alternatives-survey needed attempt 2, but the attempt-1 FAIL was format-only — report was substantively complete and the check rejected `**Accessed:**` (bold) where it wanted bare `Accessed:`. Scoreboard understates the model here. Check-author lesson: research-with-proof.py's field matching should tolerate markdown emphasis.
+- 2026-07-13 code-feature (claude-vision-proxy-build), high reasoning: 1/1 first-try, 30k tokens, faithfully ported a codex-CLI-backed proxy to a claude-CLI-backed one from a heavily pre-researched spec (exact invocation flags, stdin JSONL shape, output-parsing contract all handed over as proven ground truth rather than left for the worker to discover). Clean, correct diff — reused the shared helpers verbatim as instructed, didn't touch unrelated code. Caveat worth remembering: the worker's own closing summary claimed "the real Claude CLI was not invoked during testing" — true of the worker's own dev-time validation, but NOT true of the actual check, which independently spawned the server and forced 3 real authenticated `claude` CLI round-trips (confirmed by re-running the check myself afterward, real API calls, real pass). Lesson reinforced: judge by the executed check and a personal re-run, never by the worker's self-report of what it tested.
 
 ## GPT-5.5 (codex) — attribution caveat
 - Scoreboard rows dated before 2026-07-09 may actually be gpt-5.6: codex eval rows logged model="" until the write-time stamping fix (PR #18) and were credited to GPT-5.5 by the registry default at read time, while the machine's codex default had already moved to gpt-5.6-sol at an unknown earlier date. `scripts/backfill_model_from_logs.py` re-stamps rows with surviving command-log evidence; anything it skips is a mixed-model aggregate. Trust post-2026-07-09 rows.
 
 ## nvidia/nemotron-3-super-120b-a12b:free
 - 2026-07-08 (research, content-strategy-recon): FAIL x2. Did the analysis in chat but never wrote report.md; attempt 2 exited rc=0 with no file. Doesn't reliably follow file-output contracts under OpenCode. Demoted — don't re-audition on file-deliverable tasks.
+- 2026-07-11 (research, home-inventory-research/ai-capture-pipeline): PASS attempt 1, 59k tokens, ~123s — wrote report.md correctly this time, and its headline find (Duelion/homebox-companion) was orchestrator-verified real with matching quotes. Partially reverses the 07-08 demotion; note the orchestrator hadn't seen that demotion line before re-auditioning (it sits in a second section under the same model — consolidate these). Status: mixed on research (1 pass / 1 double-fail); next audition should stay low-stakes.
 
 ## meta-llama/llama-3.3-70b-instruct:free
 - 2026-07-08 (research, content-strategy-recon): FAIL x2. Timed out at 900s both attempts on a moderate DB-scrape+format task. Too slow on the free tier for harness work. Demoted — don't re-audition without much longer timeouts or paid tier.

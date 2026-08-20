@@ -7402,6 +7402,22 @@ def catalog_models_by_id(catalog_models: list[dict[str, Any]]) -> dict[str, dict
     return by_id
 
 
+def catalog_lookup_model(
+    model_key: str,
+    catalog_by_id: dict[str, dict[str, Any]],
+) -> dict[str, Any] | None:
+    # A task's "model" field carries the "openrouter/" routing prefix Ringer
+    # needs to fill the OpenCode engine's {model} placeholder, but the
+    # OpenRouter catalog itself keys models without it (e.g. "z-ai/glm-5.2").
+    # Strip the prefix before the lookup or every OpenCode/OpenRouter task
+    # silently misses the catalog and never gets a cost estimate.
+    if model_key.startswith("openrouter/"):
+        stripped = catalog_by_id.get(model_key.removeprefix("openrouter/"))
+        if stripped is not None:
+            return stripped
+    return catalog_by_id.get(model_key)
+
+
 def catalog_identity_fields(
     model_key: str,
     catalog_by_id: dict[str, dict[str, Any]],
@@ -7409,7 +7425,7 @@ def catalog_identity_fields(
     if not model_key.startswith("openrouter/"):
         return {}
     catalog_id = model_key.removeprefix("openrouter/")
-    model = catalog_by_id.get(catalog_id) or catalog_by_id.get(model_key)
+    model = catalog_lookup_model(model_key, catalog_by_id)
     if model is None:
         return {}
     name = model_log_text(model.get("name"))
@@ -7607,7 +7623,7 @@ def order_model_scoreboard_rows(
             model_scoreboard_tier_rank(str(row.get("tier") or "")),
             -float(row.get("first_try_pass_rate") or 0),
             -float(row.get("pass_rate") or 0),
-            model_sort_cost(row, catalog_by_id.get(str(row.get("model") or ""))),
+            model_sort_cost(row, catalog_lookup_model(str(row.get("model") or ""), catalog_by_id)),
             str(row.get("engine") or ""),
             str(row.get("model") or ""),
             str(row.get("reasoning_effort") or ""),

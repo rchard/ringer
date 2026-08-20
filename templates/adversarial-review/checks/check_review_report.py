@@ -27,7 +27,7 @@ def main() -> int:
     if not re.search(r"(?im)^#+\s*summary\b", text):
         fails.append("missing ## Summary section")
 
-    finding_blocks = re.split(r"(?im)^Finding\s*:\s*", text)
+    finding_blocks = re.split(r"(?im)^[*_]{0,2}Finding[*_]{0,2}\s*:\s*", text)
     finding_count = len(finding_blocks) - 1
     no_findings = bool(re.search(r"(?i)\bNO FINDINGS\b", text))
 
@@ -37,15 +37,15 @@ def main() -> int:
     for index, block in enumerate(finding_blocks[1:], start=1):
         block_text = "Finding: " + block
         for label in REQUIRED_LABELS:
-            if not re.search(rf"(?im)^{label}\s*:", block_text):
+            if not re.search(rf"(?im)^[*_]{{0,2}}{label}[*_]{{0,2}}\s*:", block_text):
                 fails.append(f"finding {index}: missing {label}: label")
-        priority = re.search(r"(?im)^Priority\s*:\s*(P[0-3])\b", block_text)
+        priority = re.search(r"(?im)^[*_]{0,2}Priority[*_]{0,2}\s*:\s*[*_]{0,2}\s*(P[0-3])\b", block_text)
         if not priority:
             fails.append(f"finding {index}: Priority must be P0, P1, P2, or P3")
-        confidence = re.search(r"(?im)^Confidence\s*:\s*(high|medium|low)\b", block_text)
+        confidence = re.search(r"(?im)^[*_]{0,2}Confidence[*_]{0,2}\s*:\s*[*_]{0,2}\s*(high|medium|low)\b", block_text)
         if not confidence:
             fails.append(f"finding {index}: Confidence must be high, medium, or low")
-        evidence = re.search(r"(?ims)^Evidence\s*:\s*(.+?)(?:\n[A-Z][A-Za-z ]+\s*:|\Z)", block_text)
+        evidence = re.search(r"(?ims)^[*_]{0,2}Evidence[*_]{0,2}\s*:\s*(.+?)(?:\n[*_]{0,2}[A-Z][A-Za-z ]+[*_]{0,2}\s*:|\Z)", block_text)
         if evidence and len(evidence.group(1).strip()) < 20:
             fails.append(f"finding {index}: Evidence is too thin; cite a file, route, log, or reproduction detail")
 
