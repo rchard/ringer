@@ -326,3 +326,25 @@ checks and raw logs support — no vibes, no worker self-reports.
 
 ## z-ai/glm-5.2 (paid slug, post-transfer rig check)
 - 2026-08-26 (probe, glm52-free-audition round 3): PASS on attempt 1 — 13,097 tokens, 63.9s, ~$0.03. Task was a small roman-numeral CLI with an executed check (13 encode + 13 decode cases, 5 malformed-numeral rejections, 3 out-of-range rejections, plus a substantive notes.md). Notable behaviour, all visible in the worker log: it self-verified beyond what the spec demanded — ran its own exhaustive 1..3999 round-trip AND a re-encode idempotence sweep before declaring done, hex-dumped stdout to confirm the "value + single newline" contract, and noticed it had created a `__pycache__` dir during testing and removed it because the spec said it owned exactly two files. Independent spot-check afterwards confirmed a genuinely general implementation (validity by strict re-encode round-trip rather than pattern rules) that also rejects IL, IC, XD, VX, IXI, MMMM, CMCM, lowercase and whitespace-padded input — none of which the check tested. This is the paid slug behaving well on a small spec-following task; it does not transfer to the `:free` slug, which is a different availability story entirely.
+
+## OpenRouter `:free` slugs — availability sweep (2026-08-26)
+Eight free slugs, byte-identical spec and executed check (the roman-numeral CLI probe), max_parallel 2. Result: **7/8 PASS, and the single failure was availability, not capability.**
+
+| slug | verdict | attempts | tokens | elapsed |
+|---|---|---|---|---|
+| `z-ai/glm-5.2:free` | PASS | 1 | 9,430 | 63.8s |
+| `cohere/north-mini-code:free` | PASS | 1 | 7,903 | 18.1s |
+| `thinkingmachines/inkling:free` | PASS | 1 | 11,664 | 146.9s |
+| `poolside/laguna-s-2.1:free` | PASS | 1 | 15,757 | 160.4s |
+| `nvidia/nemotron-3-super-120b-a12b:free` | PASS | 1 | 15,758 | 162.1s |
+| `liquid/lfm-2.5-2.6b:free` | PASS | 1 | 16,781 | 177.1s |
+| `minimax/minimax-m3:free` | PASS | 2 | 26,756 | 688.6s |
+| `google/gemma-4-31b-it:free` | FAIL | 2 | 0 | 144.0s |
+
+- **The 429 is per-slug and transient, not a property of "free" as a tier.** `glm-5.2:free` — which had just failed four straight attempts across two runs — passed here on attempt 1. `gemma-4-31b-it:free` failed both attempts on upstream 429 from Google AI Studio (`limit_source: upstream_provider_shared_pool`), zero tokens, zero files. Lesson: never conclude anything about a free model from a single 429 run; re-roll before judging, and expect roughly 1-in-8 of any free batch to be unavailable at any given moment. Budget a retry, keep free slugs off time-critical lanes, and keep a paid fallback.
+- **Independent spot-check (not the run's own check): all 7 passing implementations are genuinely general.** Exhaustive 1..3999 round-trip = 0 failures for every one; canonical forms correct; all 7 rejected 14/14 adversarial malformed numerals the check never tested (IL, IC, XD, VX, IXI, MMMM, CMCM, VIV, IVI, XXXX, lowercase, whitespace-padded). No hardcoding to the check's inputs anywhere. 74-99 LOC each.
+- `cohere/north-mini-code:free` — standout: fastest by 3.5x (18.1s, 7,903 tokens) and fully correct. Worth a real exploration slot on code tasks.
+- `liquid/lfm-2.5-2.6b:free` — a 2.6B model passing a strict-validation task first try (177s) is well above what the "small/flash-class models choke" note would predict. That note is about long conversational/multi-turn harness tasks; short mechanical single-shot tasks are apparently fine.
+- `nvidia/nemotron-3-super-120b-a12b:free` — **re-audition PASSED.** Its 2026-07-06 audition failed on a 2,650-line structured code review, with the note "if it gets another slot, try a shorter, more mechanical task first." That was the right call: on a short mechanical task it passed first try at 15,758 tokens. Promote off the do-not-retry list for mechanical work; the earlier failure was task-shape mismatch, not incapacity.
+- `minimax/minimax-m3:free` — only model to need a retry: attempt 1 hit the 420s wall (SIGTERM), attempt 2 passed at 26,756 tokens. Correct but slow; give it a generous timeout or don't bother.
+- Orchestrator note: my independent probe initially errored on nemotron's module because it named its functions `int_to_roman`/`roman_to_int` rather than `encode`/`decode`. The spec only ever specified the *CLI* contract, which it honors exactly — a good reminder that checks should verify what must be TRUE, not the shape the orchestrator imagined.
