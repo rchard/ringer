@@ -98,3 +98,72 @@ lab = "Meta"
 confidence = "verified"
 source = "manifest model field; OpenRouter slug meta-llama/llama-3.3-70b-instruct:free"
 last_verified = 2026-07-10
+
+# Registered 2026-08-26 following docs/TAXONOMY.md step 3 (OpenCode/OpenRouter):
+# slug matched to the OpenRouter catalog `id`, with `display` and `lab` taken from
+# the catalog `name` and the slug's organization segment. Per the same procedure,
+# a catalog-derived lab stays confidence = "unverified" until confirmed against the
+# lab's own model page; promote to "verified" and refresh last_verified when you do.
+
+[engines.opencode.models."openrouter/z-ai/glm-5.2:free"]
+display = "GLM 5.2 (free)"
+lab = "Z.ai (Zhipu AI)"
+confidence = "verified"
+source = "OpenRouter catalog id z-ai/glm-5.2:free (name 'Z.ai: GLM 5.2 (free)'); lab matches the verified openrouter/z-ai/glm-5.2 entry above — same model, free-tier routing variant"
+last_verified = 2026-08-26
+
+[engines.opencode.models."openrouter/minimax/minimax-m3:free"]
+display = "MiniMax M3 (free)"
+lab = "MiniMax"
+confidence = "unverified"
+source = "OpenRouter catalog id minimax/minimax-m3:free (name 'MiniMax: MiniMax M3 (free)')"
+last_verified = 2026-08-26
+
+[engines.opencode.models."openrouter/thinkingmachines/inkling:free"]
+display = "Inkling (free)"
+lab = "Thinking Machines"
+confidence = "unverified"
+source = "OpenRouter catalog id thinkingmachines/inkling:free (name 'Thinking Machines: Inkling (free)')"
+last_verified = 2026-08-26
+
+[engines.opencode.models."openrouter/cohere/north-mini-code:free"]
+display = "North Mini Code (free)"
+lab = "Cohere"
+confidence = "unverified"
+source = "OpenRouter catalog id cohere/north-mini-code:free (name 'Cohere: North Mini Code (free)')"
+last_verified = 2026-08-26
+
+[engines.opencode.models."openrouter/poolside/laguna-s-2.1:free"]
+display = "Laguna S 2.1 (free)"
+lab = "Poolside"
+confidence = "unverified"
+source = "OpenRouter catalog id poolside/laguna-s-2.1:free (name 'Poolside: Laguna S 2.1 (free)')"
+last_verified = 2026-08-26
+
+[engines.opencode.models."openrouter/liquid/lfm-2.5-2.6b:free"]
+display = "LFM2.5-2.6B (free)"
+lab = "Liquid AI"
+confidence = "unverified"
+source = "OpenRouter catalog id liquid/lfm-2.5-2.6b:free (name 'LiquidAI: LFM2.5-2.6B (free)')"
+last_verified = 2026-08-26
+
+[engines.opencode.models."openrouter/google/gemma-4-31b-it:free"]
+display = "Gemma 4 31B (free)"
+lab = "Google"
+confidence = "unverified"
+source = "OpenRouter catalog id google/gemma-4-31b-it:free (name 'Google: Gemma 4 31B (free)')"
+last_verified = 2026-08-26
+
+[engines.opencode.models."openrouter/deepseek/deepseek-chat-v3.1"]
+display = "DeepSeek V3.1"
+lab = "DeepSeek"
+confidence = "unverified"
+source = "OpenRouter catalog id deepseek/deepseek-chat-v3.1 (name 'DeepSeek: DeepSeek V3.1')"
+last_verified = 2026-08-26
+
+[engines.opencode.models."openrouter/qwen/qwen3-235b-a22b-2507"]
+display = "Qwen3 235B A22B Instruct 2507"
+lab = "Qwen (Alibaba)"
+confidence = "unverified"
+source = "OpenRouter catalog id qwen/qwen3-235b-a22b-2507 (name 'Qwen: Qwen3 235B A22B Instruct 2507')"
+last_verified = 2026-08-26
