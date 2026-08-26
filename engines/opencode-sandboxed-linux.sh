@@ -77,7 +77,7 @@ bwrap \
   --unshare-pid \
   --die-with-parent \
   --chdir "$TASKDIR_REAL" \
-  "$OPENCODE_BIN" "$@" < /dev/null
+  -- "$OPENCODE_BIN" "$@" < /dev/null
 status=$?
 set -e
 exit "$status"
