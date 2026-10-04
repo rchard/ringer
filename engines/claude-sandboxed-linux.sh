@@ -11,7 +11,8 @@
 # Usage (as a ringer engine bin):
 #   claude-sandboxed-linux.sh <taskdir> [--no-sandbox] <claude args...>
 #
-# Claude Code prints one JSON result object (--output-format json). After it
+# Claude Code streams JSON events (--output-format stream-json --verbose, one
+# per line, so Ringside shows live progress) ending in a result event. After it
 # exits, this wrapper appends two summary lines derived from that object so
 # ringer's default token regex and a model_report_regex can read them:
 #   tokens used: <input + cache + output tokens>
@@ -77,11 +78,28 @@ set -e
 
 python3 - "$OUT" <<'PY' || true
 import json, sys
+# Accepts --output-format json (one object) or stream-json (one event per
+# line, ending in a {"type":"result",...} event); the result carries usage.
+obj = None
 try:
     text = open(sys.argv[1]).read()
-    obj = json.loads(text[text.index("{"):])
 except Exception:
     sys.exit(0)
+for line in text.splitlines():
+    line = line.strip()
+    if not line.startswith("{"):
+        continue
+    try:
+        ev = json.loads(line)
+    except Exception:
+        continue
+    if ev.get("type") == "result":
+        obj = ev
+if obj is None:
+    try:
+        obj = json.loads(text[text.index("{"):])
+    except Exception:
+        sys.exit(0)
 u = obj.get("usage") or {}
 total = sum(int(u.get(k) or 0) for k in ("input_tokens", "cache_creation_input_tokens",
                                           "cache_read_input_tokens", "output_tokens"))
