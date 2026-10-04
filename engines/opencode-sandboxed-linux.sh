@@ -48,15 +48,30 @@ trap cleanup EXIT
 
 mkdir -p "$SCRATCH/cache"
 
-# OpenCode's own state dirs must stay writable or it cannot read its auth or
-# keep its session DB. Create any that are missing so the bind never fails.
+# OpenCode's state and config dirs must stay writable. Create any that are
+# missing so the bind never fails.
 OC_SHARE="$HOME/.local/share/opencode"
 OC_STATE="$HOME/.local/state/opencode"
 OC_CONFIG="$HOME/.config/opencode"
 mkdir -p "$OC_SHARE" "$OC_STATE" "$OC_CONFIG"
 
+# Per-run private data dir (XDG_DATA_HOME). OpenCode keeps one SQLite session DB
+# under its data dir and writes to it at startup without waiting on a busy
+# lock, so parallel workers sharing ~/.local/share/opencode/opencode.db die
+# with "database is locked" (reproduced 2026-10-04 on opencode 1.18.34: 1 of 6
+# simultaneous starts). Each worker gets its own DB instead; auth.json is
+# bind-mounted read-only from the real data dir, never copied.
+DATA_DIR="$SCRATCH/data/opencode"
+mkdir -p "$DATA_DIR"
+AUTH_BIND=()
+if [ -f "$OC_SHARE/auth.json" ]; then
+  : > "$DATA_DIR/auth.json"
+  AUTH_BIND=(--ro-bind "$OC_SHARE/auth.json" "$DATA_DIR/auth.json")
+fi
+
 export TMPDIR="$SCRATCH"
 export XDG_CACHE_HOME="$SCRATCH/cache"
+export XDG_DATA_HOME="$SCRATCH/data"
 
 # Whole filesystem readable, nothing writable, then punch through exactly the
 # writable paths. Paths are passed as separate argv elements, never interpolated
@@ -71,7 +86,7 @@ bwrap \
   --tmpfs /tmp \
   --bind "$TASKDIR_REAL" "$TASKDIR_REAL" \
   --bind "$SCRATCH" "$SCRATCH" \
-  --bind "$OC_SHARE" "$OC_SHARE" \
+  "${AUTH_BIND[@]}" \
   --bind "$OC_STATE" "$OC_STATE" \
   --bind "$OC_CONFIG" "$OC_CONFIG" \
   --unshare-pid \
