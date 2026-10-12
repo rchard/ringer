@@ -152,7 +152,7 @@ explicitly is always read — naming it is consent.
 
 ## Lint
 
-Lint checks a manifest for the mistakes that make swarms hard to trust: checks that cannot fail, silent checks, worktree deliverables that disappear, worker commits that die with deleted worktrees, serial fan-out, write collisions, and underspecified specs.
+Lint checks a manifest for the mistakes that make swarms hard to trust: checks that cannot fail, silent checks, worktree deliverables that disappear, worker commits that die with deleted worktrees, serial fan-out, write collisions, underspecified specs, and specs that point sandboxed workers at files under /tmp (their /tmp is private and empty).
 
 ```bash
 ./ringer.py lint templates/review-swarm/manifest.json

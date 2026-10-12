@@ -741,6 +741,9 @@ class EngineConfig:
     # its own "model" — this is what makes a harness engine (OpenCode) model
     # agnostic instead of hard-coding one model into the command line.
     model_default: str = ""
+    # Whether the engine's sandbox mounts an empty tmpfs over /tmp; None means
+    # detect it from the engine's wrapper script.
+    private_tmp: bool | None = None
 
     @property
     def process_name(self) -> str:
@@ -1698,6 +1701,11 @@ def load_engines(raw: Any) -> dict[str, EngineConfig]:
         model_default = str(
             section.get("model_default", base.model_default if base else "")
         ).strip()
+        private_tmp = base.private_tmp if base else None
+        if "private_tmp" in section:
+            if not isinstance(section["private_tmp"], bool):
+                raise ValueError(f"engines.{clean_name}.private_tmp must be true or false")
+            private_tmp = section["private_tmp"]
         engines[clean_name] = EngineConfig(
             name=clean_name,
             bin=bin_path,
@@ -1707,6 +1715,7 @@ def load_engines(raw: Any) -> dict[str, EngineConfig]:
             token_regex=token_regex,
             model_report_regex=model_report_regex,
             model_default=model_default,
+            private_tmp=private_tmp,
         )
     return engines
 
@@ -1895,6 +1904,53 @@ class Manifest:
         )
 
 
+TMP_PATH_RE = re.compile(r"/tmp/[^\s'\"`(),]+")
+
+
+def engine_has_private_tmp(engine: EngineConfig) -> bool:
+    """True when workers of this engine see an empty /tmp (bubblewrap tmpfs)."""
+    if engine.private_tmp is not None:
+        return engine.private_tmp
+    try:
+        bin_path = Path(engine.bin).expanduser()
+        if not bin_path.is_absolute():
+            found = shutil.which(engine.bin)
+            if not found:
+                return False
+            bin_path = Path(found)
+        if not bin_path.is_file() or bin_path.stat().st_size > 1_000_000:
+            return False
+        return "--tmpfs /tmp" in bin_path.read_text(encoding="utf-8")
+    except (OSError, ValueError):
+        return False
+
+
+def private_tmp_findings(task: TaskSpec, engine: EngineConfig, workdir: Path) -> list[str]:
+    findings: list[str] = []
+    try:
+        resolved_workdir = workdir.expanduser().resolve()
+    except (OSError, RuntimeError):
+        resolved_workdir = workdir
+    seen: set[str] = set()
+    for match in TMP_PATH_RE.finditer(task.spec):
+        path = match.group(0).rstrip(".:;")
+        if path in seen:
+            continue
+        seen.add(path)
+        try:
+            inside = Path(path).resolve().is_relative_to(resolved_workdir)
+        except (OSError, RuntimeError):
+            inside = False
+        if inside:
+            continue
+        findings.append(
+            f"{task.key}: spec references {path}, but the {engine.name} engine gives "
+            "workers a private /tmp, so the worker cannot read it — move it outside "
+            "/tmp (e.g. ~/.ringer/inputs/)."
+        )
+    return findings
+
+
 FILE_TEST_OPS = {"-e", "-f", "-s", "-d", "-r", "-w", "-x", "-L"}
 
 
@@ -1949,6 +2005,13 @@ def lint_manifest(
                 f"{task.key}: no task_type; the model log buckets this as (untyped) — "
                 "name one (e.g. code-feature, research, image-gen) so './ringer.py models' can guide routing."
             )
+
+    if config is not None:
+        for task in manifest.tasks:
+            engine = config.engines.get(task.engine)
+            if task.full_access or engine is None or not engine_has_private_tmp(engine):
+                continue
+            findings.extend(private_tmp_findings(task, engine, manifest.workdir))
 
     if len(manifest.tasks) >= 3 and manifest.max_parallel == 1:
         findings.append("manifest: tasks will run serially; set max_parallel.")
@@ -11173,8 +11236,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "lint":
             manifest = Manifest.from_path(args.manifest)
             print_engine_bin_diagnostics_if_config_loads(args.config)
+            try:
+                lint_config: AppConfig | None = AppConfig.load(args.config)
+            except Exception:
+                lint_config = None
             findings = lint_manifest(
                 manifest,
+                config=lint_config,
                 allow_noncanonical_route=args.allow_noncanonical_route,
             )
             if findings:
